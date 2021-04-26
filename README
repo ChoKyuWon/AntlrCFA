@@ -1,0 +1,4 @@
+##### ESW4007-S21 PA1 ####
+
+1. ``make`` to run antlr to generate parser
+2. ``make cfa`` to analyse control flow of ``example.c``
