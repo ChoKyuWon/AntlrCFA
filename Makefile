@@ -11,6 +11,7 @@ all:antlr javac
 antlr:
 	@${ANTLR} ${PROG}.g4 -visitor
 javac:
+	$(MAKE) -C cfg
 	@javac -classpath ${CLASSPATH} ${PROG}${TARGET}.java
 
 grun:
@@ -21,4 +22,5 @@ cfa:
 	@java ${PROG}${TARGET} ${INPUT_C} > cfg.out
 
 clean:
+	$(MAKE) -C cfg clean
 	rm ${BASEFILE};rm *.class;rm *.tokens;rm *.interp

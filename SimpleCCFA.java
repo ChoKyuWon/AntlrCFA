@@ -6,36 +6,25 @@ import java.lang.Integer;
 import java.util.*;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
+import cfg.CFG;
+import cfg.BasicBlock;
+import cfg.FunctionEntry;
 
-class BasicBlock {
-  ArrayList<String> stmtList;
-  String blockName;
-  Integer blockNum;
-  ArrayList<BasicBlock> predecessors;
-  ArrayList<BasicBlock> successors;
-  public void init() {
-    predecessors = new ArrayList<BasicBlock>();
-    successors = new ArrayList<BasicBlock>();
-    stmtList = new ArrayList<String>();
-  }
-  public BasicBlock(Integer num, String name) {
-    blockName = name;
-    blockNum = num;
-    init();
-  }
-  public void addStmt(String stmt) { stmtList.add(stmt); }
-}
+class CFAVisitor extends SimpleCBaseVisitor<Integer> {
+  CFG g;
 
-class FunctionEntry {
-  ArrayList<BasicBlock> blocks;
-  String fn_name;
-  String ret_type;
-  String args;
-  public FunctionEntry(String name, String type,
-                       SimpleCParser.ParamListContext _args) {
-    fn_name = name;
-    ret_type = type;
-    args = "";
+  public ArrayList<FunctionEntry> getEntry() { return g.entry; }
+  public CFG getCFG() { return g; }
+
+  @Override
+  public Integer visitProgram(SimpleCParser.ProgramContext ctx) {
+    g = new CFG();
+    return visitChildren(ctx);
+  }
+  @Override
+  public Integer visitFunction(SimpleCParser.FunctionContext ctx) {
+    String args = "";
+    SimpleCParser.ParamListContext _args = ctx.paramList();
     args += _args.type(0).getText();
     args += " ";
     args += _args.identifier(0).getText();
@@ -48,129 +37,98 @@ class FunctionEntry {
       args += " ";
       args += _args.identifier(i).getText();
     }
-    blocks = new ArrayList<BasicBlock>();
-  }
-  public void addBlock(BasicBlock b) { blocks.add(b); }
-  public ArrayList<BasicBlock> getBlocks() { return blocks; }
-  public BasicBlock getExit() {
-    for (BasicBlock b : blocks) {
-      if (b.blockNum == -1) {
-        return b;
-      }
-    }
-    return null;
-  }
-}
-
-class CFAVisitor extends SimpleCBaseVisitor<Integer> {
-  ArrayList<FunctionEntry> entry;
-  FunctionEntry current_function;
-  BasicBlock current_block;
-  Integer blockNum;
-
-  public ArrayList<FunctionEntry> getEntry() { return entry; }
-
-  @Override
-  public Integer visitProgram(SimpleCParser.ProgramContext ctx) {
-    return visitChildren(ctx);
-  }
-  @Override
-  public Integer visitFunction(SimpleCParser.FunctionContext ctx) {
-    if (entry == null) {
-      entry = new ArrayList<FunctionEntry>();
-    }
-    current_function = new FunctionEntry(ctx.ID().getText(),
-                                         ctx.type().getText(), ctx.paramList());
-    entry.add(current_function);
-    current_block = new BasicBlock(0, "B0");
+    g.current_function = new FunctionEntry(ctx.ID().getText(),
+                                         ctx.type().getText(), args);
+    g.entry.add(g.current_function);
+    g.current_block = new BasicBlock(0, "B0");
     BasicBlock entryBlock = new BasicBlock(-2, "fn_entry");
-    blockNum = 0;
-    current_block.predecessors.add(entryBlock);
-    current_function.blocks.add(current_block);
+    g.blockNum = 0;
+    g.current_block.predecessors.add(entryBlock);
+    g.current_function.blocks.add(g.current_block);
     return visitChildren(ctx);
   }
   @Override
   public Integer visitIfStmt(SimpleCParser.IfStmtContext ctx) {
-    BasicBlock prevBlock = current_block;
+    BasicBlock prevBlock = g.current_block;
     BasicBlock elseblock = null;
-    current_block.addStmt("if(" + ctx.expr().getText() + ")");
-    blockNum += 1;
+    g.current_block.addStmt("if(" + ctx.expr().getText() + ")");
+    g.blockNum += 1;
     BasicBlock ifblock =
-        new BasicBlock(blockNum, "B" + String.valueOf(blockNum));
-    current_block.successors.add(ifblock);
-    ifblock.predecessors.add(current_block);
-    current_function.blocks.add(ifblock);
-    current_block = ifblock;
+        new BasicBlock(g.blockNum, "B" + String.valueOf(g.blockNum));
+    g.current_block.successors.add(ifblock);
+    ifblock.predecessors.add(g.current_block);
+    g.current_function.blocks.add(ifblock);
+    g.current_block = ifblock;
     if (ctx.ELSE() == null) {
       visitStmt(ctx.stmt(0));
     } else {
       visitStmt(ctx.stmt(0));
-      blockNum += 1;
-      elseblock = new BasicBlock(blockNum, "B" + String.valueOf(blockNum));
+      g.blockNum += 1;
+      elseblock = new BasicBlock(g.blockNum, "B" + String.valueOf(g.blockNum));
       prevBlock.successors.add(elseblock);
       elseblock.predecessors.add(prevBlock);
-      current_function.blocks.add(elseblock);
-      current_block = elseblock;
+      g.current_function.blocks.add(elseblock);
+      g.current_block = elseblock;
       visitStmt(ctx.stmt(1));
     }
-    blockNum += 1;
+    g.blockNum += 1;
     BasicBlock newblock =
-        new BasicBlock(blockNum, "B" + String.valueOf(blockNum));
+        new BasicBlock(g.blockNum, "B" + String.valueOf(g.blockNum));
     ifblock.successors.add(newblock);
     newblock.predecessors.add(ifblock);
     if (elseblock != null) {
       elseblock.successors.add(newblock);
       newblock.predecessors.add(elseblock);
     }
-    current_function.addBlock(newblock);
-    current_block = newblock;
+    g.current_function.addBlock(newblock);
+    g.current_block = newblock;
     return 0;
   }
 
   @Override
   public Integer visitWhileStmt(SimpleCParser.WhileStmtContext ctx) {
-    BasicBlock prevBlock = current_block;
-    current_block.addStmt("while(" + ctx.expr().getText() + ")");
-    blockNum += 1;
+    BasicBlock prevBlock = g.current_block;
+    g.current_block.addStmt("while(" + ctx.expr().getText() + ")");
+    g.blockNum += 1;
     BasicBlock loopblock =
-        new BasicBlock(blockNum, "B" + String.valueOf(blockNum));
-    current_block.successors.add(loopblock);
-    loopblock.predecessors.add(current_block);
-    loopblock.successors.add(current_block);
-    current_function.blocks.add(loopblock);
-    blockNum += 1;
+        new BasicBlock(g.blockNum, "B" + String.valueOf(g.blockNum));
+    g.current_block.successors.add(loopblock);
+    loopblock.predecessors.add(g.current_block);
+    loopblock.successors.add(g.current_block);
+    g.current_function.blocks.add(loopblock);
+    g.blockNum += 1;
     BasicBlock newblock =
-        new BasicBlock(blockNum, "B" + String.valueOf(blockNum));
-    newblock.predecessors.add(current_block);
-    current_block.successors.add(newblock);
-    current_function.addBlock(newblock);
-    current_block = loopblock;
+        new BasicBlock(g.blockNum, "B" + String.valueOf(g.blockNum));
+    newblock.predecessors.add(g.current_block);
+    g.current_block.successors.add(newblock);
+    g.current_function.addBlock(newblock);
+    g.current_block = loopblock;
     visitStmt(ctx.stmt());
-    current_block = newblock;
+    g.current_block = newblock;
     return 0;
   }
   @Override
   public Integer visitForStmt(SimpleCParser.ForStmtContext ctx) {
-    BasicBlock prevBlock = current_block;
-    current_block.addStmt("for(" + ctx.assign(0).getText() + ";" +
+    BasicBlock prevBlock = g.current_block;
+    g.current_block.addStmt("for(" + ctx.assign(0).getText() + ";" +
                           ctx.expr().getText() + ";" + ctx.assign(1).getText() +
                           ")");
-    blockNum += 1;
+    g.blockNum += 1;
     BasicBlock loopblock =
-        new BasicBlock(blockNum, "B" + String.valueOf(blockNum));
-    current_block.successors.add(loopblock);
-    loopblock.predecessors.add(current_block);
-    loopblock.successors.add(current_block);
-    current_function.blocks.add(loopblock);
-    blockNum += 1;
+        new BasicBlock(g.blockNum, "B" + String.valueOf(g.blockNum));
+    g.current_block.successors.add(loopblock);
+    loopblock.predecessors.add(g.current_block);
+    loopblock.successors.add(g.current_block);
+    g.current_function.blocks.add(loopblock);
+    g.blockNum += 1;
     BasicBlock newblock =
-        new BasicBlock(blockNum, "B" + String.valueOf(blockNum));
-    newblock.predecessors.add(current_block);
-    current_block.successors.add(newblock);
-    current_function.addBlock(newblock);
-    current_block = loopblock;
+        new BasicBlock(g.blockNum, "B" + String.valueOf(g.blockNum));
+    newblock.predecessors.add(g.current_block);
+    g.current_block.successors.add(newblock);
+    g.current_function.addBlock(newblock);
+    g.current_block = loopblock;
     visitStmt(ctx.stmt());
-    current_block = newblock;
+    g.current_block = newblock;
     return 0;
   }
   @Override
@@ -186,27 +144,27 @@ class CFAVisitor extends SimpleCBaseVisitor<Integer> {
       args += ", ";
       args += ctx.identList().identifier(i).getText();
     }
-    current_block.addStmt(args);
+    g.current_block.addStmt(args);
     return visitChildren(ctx);
   }
 
   @Override
   public Integer visitStmt(SimpleCParser.StmtContext ctx) {
     if (ctx.assignStmt() != null) {
-      current_block.addStmt(ctx.assignStmt().getText());
+      g.current_block.addStmt(ctx.assignStmt().getText());
     } else if (ctx.callStmt() != null) {
-      current_block.addStmt(ctx.callStmt().getText());
+      g.current_block.addStmt(ctx.callStmt().getText());
     } else if (ctx.retStmt() != null) {
-      current_block.addStmt(ctx.retStmt().getText());
-      BasicBlock exitBlock = current_function.getExit();
+      g.current_block.addStmt(ctx.retStmt().getText());
+      BasicBlock exitBlock = g.current_function.getExit();
       if (exitBlock == null) {
         exitBlock = new BasicBlock(-1, "fn_exit");
-        exitBlock.predecessors.add(current_block);
-        current_block.successors.add(exitBlock);
-        current_function.addBlock(exitBlock);
+        exitBlock.predecessors.add(g.current_block);
+        g.current_block.successors.add(exitBlock);
+        g.current_function.addBlock(exitBlock);
       } else {
-        exitBlock.predecessors.add(current_block);
-        current_block.successors.add(exitBlock);
+        exitBlock.predecessors.add(g.current_block);
+        g.current_block.successors.add(exitBlock);
       }
     }
     return visitChildren(ctx);
@@ -232,7 +190,7 @@ public class SimpleCCFA {
     try {
       fo = new File(args[1]);
     } catch (Exception e) {
-      fo = new File("cfg.out");
+      fo = new File("g.out");
     }
     // Get lexer
     SimpleCLexer lexer = new SimpleCLexer(new ANTLRInputStream(input));
@@ -242,9 +200,11 @@ public class SimpleCCFA {
     ParseTree tree = parser.program();
     CFAVisitor v = new CFAVisitor();
     v.visit(tree);
-    ArrayList<FunctionEntry> array = v.getEntry();
 
-    for (FunctionEntry fn : array) {
+    CFG g = v.getCFG();
+    // ArrayList<FunctionEntry> array = v.getEntry();
+
+    for (FunctionEntry fn : g.getEntry()) {
       System.out.println(
           "fn_entry{"
           + "\n    fn_name:" + fn.fn_name + "\n    ret_type:" + fn.ret_type +

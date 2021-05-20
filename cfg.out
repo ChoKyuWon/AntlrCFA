@@ -1,0 +1,129 @@
+fn_entry{
+    fn_name:func
+    ret_type:int
+    args:int x
+}
+Predecessors: -
+Successors: B0
+
+B0
+{
+    int n, s=0
+    int i=0
+    if(x<0)
+}
+Predecessors:fn_entry 
+Successors:B1 B2 
+
+B1
+{
+    n=0;
+}
+Predecessors:B0 
+Successors:B3 
+
+B2
+{
+    n=1;
+}
+Predecessors:B0 
+Successors:B3 
+
+B3
+{
+    while(n<10)
+}
+Predecessors:B1 B2 
+Successors:B4 B5 
+
+B4
+{
+    s=s+n;
+    n=n+1;
+}
+Predecessors:B3 
+Successors:B3 
+
+B5
+{
+    for(i=0;i<10;i=i+1)
+}
+Predecessors:B3 
+Successors:B6 B7 
+
+B6
+{
+    return0;
+}
+Predecessors:B5 
+Successors:B5 fn_exit 
+
+B7
+{
+    returns;
+}
+Predecessors:B5 
+Successors:fn_exit 
+
+fn_exit
+{
+}
+Predecessors:B6 B7 
+Successors: -
+fn_entry{
+    fn_name:func2
+    ret_type:int
+    args:int x,int y
+}
+Predecessors: -
+Successors: B0
+
+B0
+{
+    int n, s=0
+    if(x<0)
+}
+Predecessors:fn_entry 
+Successors:B1 B2 
+
+B1
+{
+    n=0;
+}
+Predecessors:B0 
+Successors:B3 
+
+B2
+{
+    n=1;
+}
+Predecessors:B0 
+Successors:B3 
+
+B3
+{
+    while(n<10)
+}
+Predecessors:B1 B2 
+Successors:B4 B5 
+
+B4
+{
+    s=s+n;
+    n=n+1;
+}
+Predecessors:B3 
+Successors:B3 
+
+B5
+{
+    returns;
+}
+Predecessors:B3 
+Successors:fn_exit 
+
+fn_exit
+{
+}
+Predecessors:B5 
+Successors: -
