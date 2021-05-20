@@ -204,37 +204,7 @@ public class SimpleCCFA {
     CFG g = v.getCFG();
     // ArrayList<FunctionEntry> array = v.getEntry();
 
-    for (FunctionEntry fn : g.getEntry()) {
-      System.out.println(
-          "fn_entry{"
-          + "\n    fn_name:" + fn.fn_name + "\n    ret_type:" + fn.ret_type +
-          "\n    args:" + fn.args + "\n}\nPredecessors: -\nSuccessors: B0");
-      for (BasicBlock b : fn.getBlocks()) {
-        System.out.println("\n" + b.blockName + "\n{");
-        for (String stmt : b.stmtList) {
-          System.out.println("    " + stmt);
-        }
-        System.out.println("}");
-        if (b.predecessors.size() == 0) {
-          System.out.println("Predecessors: -");
-        } else {
-          System.out.print("Predecessors:");
-          for (BasicBlock pre : b.predecessors) {
-            System.out.print(pre.blockName + " ");
-          }
-          System.out.println("");
-        }
-        if (b.successors.size() == 0) {
-          System.out.println("Successors: -");
-        } else {
-          System.out.print("Successors:");
-          for (BasicBlock pre : b.successors) {
-            System.out.print(pre.blockName + " ");
-          }
-          System.out.println("");
-        }
-      }
-    }
+    g.printResult();
     // walk from the root of parse tree
     // walker.walk(listener, parser.prog());
   }
