@@ -9,7 +9,7 @@ import org.antlr.v4.runtime.tree.*;
 
 
 
-public class SimpleCCFA {
+public class SimpleCDFA {
   public static void main(String[] args) throws IOException {
     String input = new String();
     File fo;
@@ -42,7 +42,7 @@ public class SimpleCCFA {
     CFG g = v.getCFG();
     // ArrayList<FunctionEntry> array = v.getEntry();
 
-    g.printResult();
+    g.liveness();
     // walk from the root of parse tree
     // walker.walk(listener, parser.prog());
   }
